@@ -1,0 +1,115 @@
+
+## 1. What this product is
+
+DecisionLens is an agentic decision-intelligence platform. A user asks a real technical decision question ("Postgres+pgvector or Postgres+ChromaDB, given our traffic, team, and budget?"), and the system plans research, pulls evidence from the web, private documents, and SQL, generates a recommendation, actively tries to break its own conclusion with a critic agent, verifies every claim against its source, and returns a structured, cited decision report.
+
+It is **not** a search engine and **not** a chatbot. The UI must never look like a generic chat interface with a message list. The product has two real jobs, and the UI should be built around that duality:
+
+1. **Watching the system think** — a live, multi-step, multi-tool research process (planner → web/RAG/SQL/calc → critic → verifier), with loops and retries.
+2. **Reading the result** — a dense, structured, citable report the user will actually use to defend a real decision to their team.
+
+Design for a technically capable, skeptical user (engineer, PM, founder, researcher) who will not trust a recommendation they cannot trace back to evidence. Trust and traceability are the product, not a feature of it.
+
+---
+
+## 2. Design direction (do not deviate without reason)
+
+### Color
+Two surfaces, not one palette bolted onto every screen:
+
+| Token | Hex | Use |
+|---|---|---|
+| `ink` | `#10131C` | Console/process surface background (planner, trace, live agent activity) |
+| `ink-raised` | `#181D2B` | Cards/panels on the ink surface |
+| `paper` | `#E9ECEC` | Report surface background — cool grey-white, not cream |
+| `paper-raised` | `#F5F6F5` | Cards/panels on the paper surface |
+| `ink-text` / `paper-text` | `#E8E9ED` / `#1A1D22` | Primary text on each surface |
+| `evidence-teal` | `#2F8F8B` | Citations, sources, retrieved evidence, links between claim and source |
+| `signal-rust` | `#C1553B` | Flags, contradictions, unverified/weak claims, critic findings |
+| `verified-green` | `#4C8B5B` | Passed verification, confirmed claims, healthy status |
+| `attention-amber` | `#D9A441` | Confidence scores, assumptions, "what would change this" markers |
+
+Explicitly avoid: warm cream (`#F4F1EA`) + terracotta/peach accents, near-black + single acid-green/vermilion accent, and zero-radius broadsheet newspaper styling. These are the default look most AI tools converge on — this product's whole pitch is that it is *not* generic AI output, and the UI should say that before the user reads a word.
+
+### Typography
+Three registers, used consistently for meaning, not decoration:
+
+- **Display/report serif** — Fraunces (or similar high-contrast serif). Used for the recommendation headline, report section titles, and the final answer. This is the "someone is willing to sign their name to this" voice.
+- **Body sans** — Inter. All UI chrome, form labels, buttons, descriptions, navigation.
+- **Evidence mono** — IBM Plex Mono (or JetBrains Mono). Run IDs, timestamps, tool calls, SQL, confidence percentages, token/cost counts, source URLs. Anything that is a *fact the system produced* rather than *prose the system wrote* goes in mono. This distinction should be visible and consistent everywhere — it's how a user tells "the system's judgment" from "the system's data" at a glance.
+
+### Layout concept
+Persistent left rail for navigation (Ask · Active Runs · Reports · Sources · Evaluation). The main canvas shifts surface (ink → paper) as a research run matures from process to product — not as separate pages living in different apps, but as one continuous run whose background literally lightens as evidence turns into an answer. A run in progress lives on `ink`. A completed report lives on `paper`. This transition itself communicates "this went from raw process to trustworthy output" without a single word of copy.
+
+### Signature element — the Evidence Thread
+Every sentence in the final report that makes a factual or comparative claim is a live target. Hovering or tapping it draws a thin `evidence-teal` connecting line (literally, an SVG or CSS-drawn thread) from that sentence to the exact source card in the evidence panel that supports it — title, retrieval time, excerpt. If a claim has **no** thread available, it is visually marked in `signal-rust` with a small "unsupported" tag instead of silently rendering like every other sentence. This is the one place to spend real design effort and motion polish — it is the literal visualization of the product's core promise (grounded, traceable claims), and nothing else in the UI should compete with it for attention.
+
+Keep everything else quiet and disciplined: generous whitespace on the paper surface, restrained monospace data density on the ink surface, no gradients, no glow effects, no decorative icons that don't carry information.
+
+---
+
+## 3. Global UI system
+
+- **Framework**: Next.js + React, Tailwind CSS. Component structure should be thin/presentational — this frontend does not own business logic (per the backend architecture, FastAPI + LangGraph own orchestration).
+- **Responsiveness**: full functionality down to mobile width, though the primary use case is desktop/laptop (this is a working tool, not a marketing site). On narrow viewports, the evidence panel and evidence-thread interaction collapse into a bottom sheet triggered by tapping a claim, rather than being cut.
+- **Motion**: used deliberately in exactly three places — (1) the evidence-thread draw-in on hover/tap, (2) the research trace's step-by-step reveal as the agent graph progresses (planner → tools → critic → verifier lighting up in sequence, matching the LangGraph state machine in the tech spec), (3) a subtle status pulse on any step currently running. Nothing else animates. Respect `prefers-reduced-motion` by cutting all three to instant state changes.
+- **Accessibility**: visible keyboard focus rings in `evidence-teal` on both surfaces, all status/confidence information conveyed with text/icon in addition to color, minimum AA contrast on both `ink` and `paper` surfaces.
+- **Empty and error states**: written in the interface's own voice, never apologetic, always actionable. E.g. a run with no results yet: "No evidence gathered yet — the planner is still deciding which sources to check." A failed tool call: "Web search failed after 3 attempts. The report will note this gap in coverage." Never "Oops!" or "Something went wrong."
+- **Voice**: plain, direct, active. Buttons say what they do ("Start research," "Compare models," "Export report") and stay consistent through the whole flow — the button that starts a run and the status label after should use the same verb.
+
+---
+
+## 4. Screens
+
+### 4.1 Decision Intake (`/ask`)
+**Surface**: paper (this is the user stating their case, not the system working).
+
+- Single prominent question field, large serif placeholder text: "What are you trying to decide?"
+- Below it, a collapsible "Add context" section (not forced open by default — most users will start typing before filling structured fields) with: goals, constraints, budget, timeframe, preferred alternatives (chips/tags input, addable inline).
+- Optional document upload zone — drag/drop, shows filename, type, size, and a small "will be searchable in this run" note per the RAG ingestion flow.
+- A live-updating right-side summary card, mono-labeled, that reflects back what the system has parsed as it detects it while typing is not required for MVP — but design the space for it: "Objective," "Candidate alternatives," "Detected constraints" — so this can light up once the Decision Parser agent is wired in.
+- Primary action: "Start research" — commits to the run and transitions the view to the trace screen. This is the moment the surface should begin its shift from `paper` toward `ink`.
+
+### 4.2 Research Trace (`/runs/{id}`)
+**Surface**: ink — this is the console.
+
+- A vertical or left-to-right graph view mirroring the actual LangGraph flow from the tech spec: Decision Parser → Planner → \[Web / RAG / SQL / Calc, shown as parallel branches] → Merge Evidence → Analysis → Critic → Verifier → Report, with a visible loop-back edge from Verifier to Analysis and Merge to Planner (this loop is a real part of the architecture — show it as a real edge, not just implied).
+- Each node shows: status (queued/running/done/failed as icon + text, not color alone), duration, and expands to show what it actually did — search queries issued, documents retrieved, SQL executed, tokens used. This is the "watching the system think" experience and should read like a build log a developer would trust, in mono type.
+- A running evidence counter and live cost/token ticker in the corner (mono), quietly reinforcing the "cost control" goal from the PRD without needing its own screen.
+- As Verifier passes, the background begins its transition to `paper` and the view offers "View report" — the process becomes the product.
+
+### 4.3 Final Decision Report (`/runs/{id}/report`)
+**Surface**: paper. This is the flagship screen — most design effort goes here after the evidence thread itself.
+
+Structure, following the PRD's 14-part report spec, but visually organized into four readable bands rather than 14 flat sections:
+
+1. **Verdict band** (top, serif, largest type on the page): the decision question restated in one line, the recommendation stated as a direct sentence, a confidence indicator (not just a number — a short mono line like "Confidence: 78% — moderate, sensitive to traffic growth assumption"), and the short list of alternatives considered as a row of comparison chips.
+2. **Evidence band**: the full report body (context, criteria, quantitative comparison table, trade-offs) with the evidence-thread interaction live on every claim. The evidence panel sits alongside this band (right rail on desktop, bottom sheet on mobile) showing source cards: title, type (web/document/SQL/calculation), retrieval timestamp, excerpt, and a credibility indicator where available.
+3. **Challenge band**: risks, counterarguments, and assumptions — visually distinct (subtle `signal-rust`/`attention-amber` accents, not alarming, just clearly "this is the system arguing against itself"), directly reflecting the critic-agent stage. Include "What would change this recommendation" as its own clearly labeled block — this is one of the most differentiated parts of the product and deserves visual weight, not to be buried as a footnote.
+4. **Trace band** (collapsed by default): a link back into the full research trace and a citations list, for the user who wants to audit everything.
+
+Export affordance ("Export report") should be visible but secondary — PDF/Markdown export is post-MVP per the PRD, so this can be present but can render as a "coming soon" state initially without blocking the rest of the design.
+
+### 4.4 Evidence & Sources Explorer (`/runs/{id}/evidence`)
+**Surface**: ink-to-paper hybrid — a working reference tool, not a showcase screen.
+
+- Filterable list/grid of all sources gathered in a run: web, document, SQL result, calculation — filter by type and by claim they support.
+- Clicking a source highlights every claim in the report it's attached to (the inverse of the evidence thread — source-to-claim instead of claim-to-source), reusing the same visual thread language for consistency.
+- Unsupported/weak claims surfaced as their own filtered view, so a skeptical user can jump straight to "show me what you couldn't back up."
+
+### 4.5 Evaluation Dashboard (`/evaluation`) — secondary/developer-facing
+**Surface**: ink.
+
+- This screen exists to prove the "measurable engineering experiment" positioning from the PRD, not to be polished to the same degree as the report. Keep it dense, mono-forward, tabular.
+- A comparison table across the benchmark progression (Baseline LLM → Basic RAG → Hybrid RAG → Agentic RAG+SQL → Agentic+Critic+Verification), with columns for the actual metrics in the PRD: citation coverage, faithfulness, answer relevance, recall@5/precision@5, latency, token cost.
+- Simple bar/line charts acceptable here (this is the one screen where a conventional dashboard look is fine — it is explicitly an engineering/evaluation tool, not the product's face).
+
+---
+
+## 5. What NOT to build
+
+- No chat bubble UI, no message thread, no "typing..." indicator standing in for the trace — the actual multi-agent graph is far more informative and is the point of the product.
+- No stock "AI sparkle" iconography, no gradient text, no glassmorphism.
+- No single flat color scheme applied identically to the process screens and the report screen — the surface shift (ink → paper) is structural, not optional polish.
+- No numbered-step decoration (01 / 02 / 03) anywhere the underlying content isn't a genuine ordered sequence. The agent graph is a real sequence with real branches and loops and should be drawn as a graph, not flattened into a numbered list.
+- Don't hide the critic/verifier stage or the "what would change this" section behind extra clicks — the willingness to argue against itself is the product's actual differentiator versus a generic AI answer, and the UI should treat it that way.

@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-ink: #10131C;
+    --color-ink-raised: #181D2B;
+    --color-ink-border: #262D3D;
+    --color-ink-text: #E8E9ED;
+    --color-ink-muted: #8E96A5;
+
+    --color-paper: #E9ECEC;
+    --color-paper-raised: #F5F6F5;
+    --color-paper-border: #D1D7D7;
+    --color-paper-text: #1A1D22;
+    --color-paper-muted: #5D646F;
+
+    --color-evidence-teal: #2F8F8B;
+    --color-evidence-teal-light: rgba(47, 143, 139, 0.15);
+    --color-signal-rust: #C1553B;
+    --color-signal-rust-light: rgba(193, 85, 59, 0.15);
+    --color-verified-green: #4C8B5B;
+    --color-verified-green-light: rgba(76, 139, 91, 0.15);
+    --color-attention-amber: #D9A441;
+    --color-attention-amber-light: rgba(217, 164, 65, 0.15);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--color-ink);
+    color: var(--color-ink-text);
+    margin: 0;
+    padding: 0;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Fraunces', Georgia, serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  }
+}
+
+/* Custom Surface Classes */
+.surface-ink {
+  background-color: var(--color-ink);
+  color: var(--color-ink-text);
+}
+
+.surface-paper {
+  background-color: var(--color-paper);
+  color: var(--color-paper-text);
+}
+
+.bg-ink-raised {
+  background-color: var(--color-ink-raised);
+}
+
+.bg-paper-raised {
+  background-color: var(--color-paper-raised);
+}
+
+.border-ink {
+  border-color: var(--color-ink-border);
+}
+
+.border-paper {
+  border-color: var(--color-paper-border);
+}
+
+/* Text Colors */
+.text-evidence-teal { color: var(--color-evidence-teal); }
+.text-signal-rust { color: var(--color-signal-rust); }
+.text-verified-green { color: var(--color-verified-green); }
+.text-attention-amber { color: var(--color-attention-amber); }
+
+.bg-evidence-teal { background-color: var(--color-evidence-teal); }
+.bg-signal-rust { background-color: var(--color-signal-rust); }
+.bg-verified-green { background-color: var(--color-verified-green); }
+.bg-attention-amber { background-color: var(--color-attention-amber); }
+
+/* Evidence Claim Highlights */
+.claim-target {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  border-bottom: 1.5px dashed var(--color-evidence-teal);
+  cursor: pointer;
+}
+
+.claim-target:hover, .claim-target.active {
+  background-color: var(--color-evidence-teal-light);
+  border-bottom: 2px solid var(--color-evidence-teal);
+}
+
+.claim-unsupported {
+  border-bottom: 1.5px dashed var(--color-signal-rust);
+}
+
+.claim-unsupported:hover, .claim-unsupported.active {
+  background-color: var(--color-signal-rust-light);
+  border-bottom: 2px solid var(--color-signal-rust);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(142, 150, 165, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 150, 165, 0.5);
+}
