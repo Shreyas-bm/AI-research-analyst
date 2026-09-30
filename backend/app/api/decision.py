@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.database.session import get_db
 from backend.app.database import crud
+from backend.app.database.models import User
+from backend.app.api.auth import get_current_user
 from backend.app.schemas.decision import DecisionIntakeRequest
 from backend.app.schemas.report import DecisionReport
 from backend.app.engine.workflow import run_decision_workflow
@@ -18,7 +20,8 @@ router = APIRouter(prefix="/api/decision", tags=["Decision Intelligence"])
 @router.post("/analyze", response_model=DecisionReport)
 async def analyze_decision(
     request: DecisionIntakeRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Run full agentic decision analysis workflow and return structured 14-part report."""
     run_id = f"run-{uuid.uuid4().hex[:10]}"
@@ -100,7 +103,8 @@ async def analyze_decision(
 @router.get("/history")
 async def list_decision_history(
     limit: int = 50,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Retrieve history of decision analysis runs."""
     runs = await crud.list_research_runs(db, limit=limit)
@@ -121,7 +125,8 @@ async def list_decision_history(
 @router.get("/{run_id}")
 async def get_decision_run(
     run_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get single decision analysis run by ID."""
     run = await crud.get_research_run(db, run_id)

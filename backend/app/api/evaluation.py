@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.database.session import get_db
 from backend.app.database import crud
+from backend.app.database.models import User
+from backend.app.api.auth import get_current_user
 from backend.app.evaluation.dataset import BENCHMARK_CASES
 from backend.app.evaluation.runner import EvaluationRunner, BenchmarkResultSummary
 
@@ -18,7 +20,8 @@ class EvalRunRequest(BaseModel):
 @router.post("/run", response_model=BenchmarkResultSummary)
 async def run_evaluation(
     request: EvalRunRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Run automated benchmarks against selected pipeline configuration."""
     selected_cases = None
@@ -33,7 +36,10 @@ async def run_evaluation(
     return summary
 
 @router.get("/runs")
-async def list_evaluation_runs(db: AsyncSession = Depends(get_db)):
+async def list_evaluation_runs(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Retrieve history of all comparative evaluation benchmark runs."""
     runs = await crud.list_evaluation_runs(db)
     return [

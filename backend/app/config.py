@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./decisionai.db"
     
+    # Auth & Security
+    SECRET_KEY: str = "decisionlens-super-secure-jwt-secret-key-2026-change-in-prod"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    
     # Vector DB
     CHROMA_PERSIST_DIR: str = "./data/chroma_db"
     

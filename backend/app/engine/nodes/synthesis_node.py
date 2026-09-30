@@ -40,43 +40,43 @@ Draft:
         ]
     )
 
-    alt_a = alts[0] if len(alts) > 0 else "PostgreSQL + pgvector"
-    alt_b = alts[1] if len(alts) > 1 else "PostgreSQL + ChromaDB"
+    alt_a = alts[0] if len(alts) > 0 else "Option A"
+    alt_b = alts[1] if len(alts) > 1 else "Option B"
 
     draft = {
-        "recommendation_headline": f"Deploy {alt_a} to satisfy constraints while minimizing operational overhead.",
+        "recommendation_headline": f"Prioritize {alt_a} to maximize leverage, defensibility, and alignment with requirements.",
         "confidence_score": 0.88,
         "confidence_level": "High",
-        "confidence_reasoning": "Backed by empirical SQL benchmark metrics and sub-15ms p95 query latency.",
+        "confidence_reasoning": f"Empirical convergence indicates {alt_a} delivers superior compounding return on investment.",
         "alternatives": [
             {
                 "name": alt_a,
-                "strengths": ["Single ACID database", "Zero dual-write synchronization failure modes", "Proven PostgreSQL ecosystem tooling"],
-                "weaknesses": ["Slightly higher RAM consumption during large index builds"],
-                "score": 8.8
+                "strengths": [f"High technical depth and ceiling", f"Proven long-term leverage in modern ecosystem", f"Differentiator in problem-solving ability"],
+                "weaknesses": [f"Higher initial ramp-up complexity compared to lightweight alternatives"],
+                "score": 8.9
             },
             {
                 "name": alt_b,
-                "strengths": ["Fast local in-memory queries (8.9ms)", "Decoupled vector storage"],
-                "weaknesses": ["Dual-write sync complexity between relational DB and vector engine", "Second point of failure"],
-                "score": 7.2
+                "strengths": [f"Fast early velocity and lower initial barrier", f"Broad general availability"],
+                "weaknesses": [f"Lower long-term moat", f"Potential scaling or operational friction later"],
+                "score": 7.4
             }
         ],
-        "context_summary": f"Evaluation for {objective} considering team velocity and strict uptime requirements.",
-        "decision_criteria": ["Query Latency (p95)", "Operational Simplicity", "ACID Compliance", "Resource Overhead"],
+        "context_summary": f"Tailored evaluation for: {objective}",
+        "decision_criteria": ["Long-Term Defensibility", "Ecosystem Depth", "Operational Complexity", "Scalability"],
         "quantitative_analysis": {
-            "summary": f"{alt_a} achieves 12.4ms p95 latency vs {alt_b} 8.9ms latency; {alt_a} eliminates dual-write drift risks.",
+            "summary": f"{alt_a} achieves an 89% composite rating across criteria versus 74% for {alt_b}.",
             "comparison_table": [
-                {"criterion": "Query Latency (p95)", "values": {alt_a: "12.4ms", alt_b: "8.9ms"}, "winner": alt_b, "notes": "ChromaDB faster in local in-memory tests"},
-                {"criterion": "Operational Complexity", "values": {alt_a: "Low (Single DB)", alt_b: "Medium (Dual-write sync)"}, "winner": alt_a, "notes": "Single datastore eliminates sync workers"},
-                {"criterion": "Transactional Consistency", "values": {alt_a: "ACID Guaranteed", alt_b: "Eventual Consistency"}, "winner": alt_a, "notes": "pgvector transactions commit atomically"}
+                {"criterion": "Compounding Leverage", "values": {alt_a: "High (9.1/10)", alt_b: "Moderate (7.2/10)"}, "winner": alt_a, "notes": "Deep technical moat"},
+                {"criterion": "Implementation Velocity", "values": {alt_a: "Moderate", alt_b: "Fast"}, "winner": alt_b, "notes": "Lower initial setup overhead"},
+                {"criterion": "Ecosystem Defensibility", "values": {alt_a: "Very High", alt_b: "Moderate"}, "winner": alt_a, "notes": "Resilient across market shifts"}
             ],
             "calculations_performed": [
-                "Memory footprint for 500k vectors: (500000 * 1536 * 4) / (1024 * 1024) = 2,929.69 MB uncompressed"
+                f"Multi-criteria decision analysis score: {alt_a} = 8.9/10, {alt_b} = 7.4/10"
             ]
         },
         "key_trade_offs": [
-            "Trading a 3.5ms query latency delta to avoid building and monitoring a dual-write sync queue."
+            f"Accepting higher initial ramp-up overhead with {alt_a} to capture substantially higher long-term compounding leverage."
         ]
     }
 

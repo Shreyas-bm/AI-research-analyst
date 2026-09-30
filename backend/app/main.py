@@ -7,6 +7,7 @@ from backend.app.database.session import init_db
 from backend.app.api.decision import router as decision_router
 from backend.app.api.documents import router as documents_router
 from backend.app.api.evaluation import router as evaluation_router
+from backend.app.api.auth import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 # Register API Routers
+app.include_router(auth_router)
 app.include_router(decision_router)
 app.include_router(documents_router)
 app.include_router(evaluation_router)

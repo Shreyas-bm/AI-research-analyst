@@ -83,7 +83,7 @@ export const EvaluationDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#10131C] text-[#E8E9ED] p-8 lg:p-12 overflow-y-auto">
+    <div className="min-h-full bg-[#10131C] text-[#E8E9ED] p-6 lg:p-10 pb-20">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}

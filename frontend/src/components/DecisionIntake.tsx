@@ -133,7 +133,7 @@ export const DecisionIntake: React.FC<DecisionIntakeProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#E9ECEC] text-[#1A1D22] p-8 lg:p-12 overflow-y-auto">
+    <div className="min-h-full bg-[#E9ECEC] text-[#1A1D22] p-6 lg:p-10 pb-28">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Header Title */}
@@ -181,18 +181,44 @@ export const DecisionIntake: React.FC<DecisionIntakeProps> = ({
             
             {/* Main Question Textarea */}
             <div>
-              <label htmlFor="decision-question-input" className="block font-mono text-xs uppercase font-bold text-[#1A1D22] mb-2 tracking-wide">
-                Decision Objective <span className="text-[#C1553B]">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="decision-question-input" className="block font-mono text-xs uppercase font-bold text-[#1A1D22] tracking-wide">
+                  Decision Objective <span className="text-[#C1553B]">*</span>
+                </label>
+                <span className="font-mono text-[11px] text-[#5D646F] hidden sm:inline">
+                  Press <kbd className="px-1.5 py-0.5 bg-[#F5F6F5] border border-[#D1D7D7] rounded text-[10px] font-bold">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-[#F5F6F5] border border-[#D1D7D7] rounded text-[10px] font-bold">Enter</kbd> to submit
+                </span>
+              </div>
               <textarea
                 id="decision-question-input"
                 rows={3}
                 required
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (question.trim() && !isSubmitting) {
+                      handleSubmit(e);
+                    }
+                  }
+                }}
                 placeholder="e.g. Should we adopt PostgreSQL + pgvector or PostgreSQL + ChromaDB for local embedding search given a 500k vector corpus?"
                 className="w-full font-serif text-lg p-4 rounded-lg bg-[#F5F6F5] border border-[#D1D7D7] focus:bg-white focus:border-[#2F8F8B] focus:ring-1 focus:ring-[#2F8F8B] outline-none transition-all placeholder:text-[#8E96A5]/70"
               />
+              <div className="flex items-center justify-between mt-2.5">
+                <span className="text-[11px] text-[#5D646F]">
+                  Be specific with constraints, tech choices, or workload for best results.
+                </span>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !question.trim()}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-[#10131C] hover:bg-[#181D2B] text-white rounded-md font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
+                >
+                  <span>{isSubmitting ? 'Analyzing...' : 'Start Research'}</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#2F8F8B] group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
             </div>
 
             {/* Candidate Alternatives */}
@@ -381,17 +407,18 @@ export const DecisionIntake: React.FC<DecisionIntakeProps> = ({
 
           </div>
 
-          {/* Primary Submit Action */}
-          <div className="flex items-center justify-between pt-2">
+          {/* Primary Submit Action Bar */}
+          <div className="sticky bottom-6 z-30 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-[#D1D7D7] shadow-xl flex items-center justify-between">
             <div className="flex items-center space-x-2 text-xs font-mono text-[#5D646F]">
               <ShieldCheck className="w-4 h-4 text-[#4C8B5B]" />
-              <span>Full Audit Trace & Adversarial Stress-Testing Guaranteed</span>
+              <span className="hidden sm:inline">Full Audit Trace & Adversarial Stress-Testing Guaranteed</span>
+              <span className="sm:hidden">Audited & Verified</span>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting || !question.trim()}
-              className="inline-flex items-center space-x-3 px-8 py-3.5 bg-[#10131C] hover:bg-[#181D2B] text-white rounded-lg font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed group"
+              className="inline-flex items-center space-x-3 px-8 py-3.5 bg-[#10131C] hover:bg-[#181D2B] text-white rounded-lg font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
             >
               <span>{isSubmitting ? 'Initializing Workflow...' : 'Start Research'}</span>
               <ArrowRight className="w-4 h-4 text-[#2F8F8B] group-hover:translate-x-1 transition-transform" />

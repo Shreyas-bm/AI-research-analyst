@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.database.session import get_db
 from backend.app.database import crud
+from backend.app.database.models import User
+from backend.app.api.auth import get_current_user
 from backend.app.retrieval.parser import DocumentParser
 from backend.app.retrieval.vector_store import ChromaVectorStore
 
@@ -16,7 +18,8 @@ router = APIRouter(prefix="/api/documents", tags=["Document Retrieval"])
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Upload PDF, Markdown, or text document, extract text chunks, and index into ChromaDB."""
     filename = file.filename or "uploaded_file.txt"
@@ -70,7 +73,10 @@ async def upload_document(
             os.remove(temp_path)
 
 @router.get("")
-async def list_documents(db: AsyncSession = Depends(get_db)):
+async def list_documents(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """List all uploaded and indexed documents."""
     docs = await crud.list_documents(db)
     return [

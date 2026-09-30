@@ -4,8 +4,11 @@ import {
   Terminal, 
   FileText, 
   Database, 
-  BarChart3
+  BarChart3,
+  LogIn,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export type ActiveTab = 'ask' | 'runs' | 'report' | 'documents' | 'evaluation';
 
@@ -15,14 +18,18 @@ interface NavigationRailProps {
   activeRunId: string | null;
   hasCompletedReport: boolean;
   historyCount?: number;
+  onOpenAuth: () => void;
 }
 
 export const NavigationRail: React.FC<NavigationRailProps> = ({
   activeTab,
   onSelectTab,
   activeRunId,
-  hasCompletedReport
+  hasCompletedReport,
+  onOpenAuth
 }) => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   const navItems = [
     {
       id: 'ask' as ActiveTab,
@@ -65,7 +72,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
 
   return (
     <aside className="w-64 bg-[#10131C] border-r border-[#262D3D] flex flex-col justify-between shrink-0 h-screen select-none">
-      {/* Brand Header */}
+      {/* Brand Header & Navigation */}
       <div>
         <div className="p-5 border-b border-[#262D3D] flex items-center space-x-3">
           <div className="w-8 h-8 rounded bg-gradient-to-br from-[#2F8F8B] to-[#181D2B] border border-[#2F8F8B]/40 flex items-center justify-center text-white font-mono font-bold text-sm shadow-sm">
@@ -91,7 +98,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
                 key={item.id}
                 onClick={() => !item.disabled && onSelectTab(item.id)}
                 disabled={item.disabled}
-                className={`w-full text-left px-3.5 py-3 rounded-md transition-all flex items-start space-x-3 group relative ${
+                className={`w-full text-left px-3.5 py-3 rounded-md transition-all flex items-start space-x-3 group relative cursor-pointer ${
                   isActive
                     ? 'bg-[#181D2B] text-[#E8E9ED] border-l-2 border-[#2F8F8B] shadow-sm'
                     : item.disabled
@@ -129,19 +136,58 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
         </nav>
       </div>
 
-      {/* System Status Footer */}
-      <div className="p-4 border-t border-[#262D3D] bg-[#141824]/60">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-[10px] text-[#8E96A5] uppercase tracking-wider flex items-center space-x-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#4C8B5B] inline-block animate-ping"></span>
-            <span>Local Node Healthy</span>
-          </span>
-          <span className="font-mono text-[10px] text-[#2F8F8B] font-semibold">
-            SQLite / Chroma
-          </span>
+      {/* Account & System Footer */}
+      <div>
+        {/* User Auth Section */}
+        <div className="p-3 mx-3 mb-3 bg-[#181D2B] border border-[#262D3D] rounded-xl">
+          {isAuthenticated && user ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#2F8F8B]/20 text-[#2F8F8B] border border-[#2F8F8B]/30 flex items-center justify-center font-mono text-xs font-bold shrink-0">
+                  {user.full_name ? user.full_name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-[#E8E9ED] truncate">
+                    {user.full_name || user.email.split('@')[0]}
+                  </div>
+                  <div className="text-[10px] text-[#8E96A5] font-mono truncate">
+                    {user.email}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                title="Sign Out"
+                className="p-1.5 text-[#8E96A5] hover:text-[#C1553B] rounded hover:bg-[#262D3D] transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="w-full py-2 px-3 bg-[#262D3D] hover:bg-[#2F8F8B] text-[#E8E9ED] hover:text-white rounded-lg transition-all flex items-center justify-center space-x-2 font-mono text-xs font-bold cursor-pointer group"
+            >
+              <LogIn className="w-3.5 h-3.5 text-[#2F8F8B] group-hover:text-white transition-colors" />
+              <span>Sign In / Register</span>
+            </button>
+          )}
         </div>
-        <div className="font-mono text-[10px] text-[#8E96A5]/80 leading-tight">
-          Strict Zero-Hallucination Claim Grounding Active
+
+        {/* System Status Footer */}
+        <div className="p-4 border-t border-[#262D3D] bg-[#141824]/60">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-[10px] text-[#8E96A5] uppercase tracking-wider flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4C8B5B] inline-block"></span>
+              <span>Node Online</span>
+            </span>
+            <span className="font-mono text-[10px] text-[#2F8F8B] font-semibold">
+              PBKDF2 Auth
+            </span>
+          </div>
+          <div className="font-mono text-[10px] text-[#8E96A5]/80 leading-tight">
+            Strict Zero-Hallucination Claim Grounding
+          </div>
         </div>
       </div>
     </aside>

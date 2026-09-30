@@ -1,6 +1,6 @@
-"""Deterministic Mock LLM Provider for offline development, CI, and zero-cost testing"""
-import json
-from typing import Type, TypeVar, Any
+"""Context-Aware Mock LLM Provider for offline development, CI, and zero-cost testing"""
+import re
+from typing import Type, TypeVar, Any, List, Dict
 from pydantic import BaseModel
 from backend.app.models.llm_base import LLMProvider, LLMRequest, LLMResponse
 from backend.app.schemas.decision import ParsedDecision
@@ -15,13 +15,62 @@ from backend.app.schemas.evidence import EvidenceItem, SourceType
 
 T = TypeVar("T", bound=BaseModel)
 
+def _extract_decision_context(prompt: str) -> Dict[str, Any]:
+    """Dynamically derive objective, alternatives, and domain from user prompt."""
+    clean = prompt.strip()
+    
+    # Try to find 'Decision Question:' or prompt text
+    q_match = re.search(r"Decision Question:\s*([^\n]+)", prompt, re.IGNORECASE)
+    question = q_match.group(1).strip() if q_match else clean
+    if not question:
+        question = "What architecture or technical path should we choose?"
+
+    # Detect alternatives if explicitly specified in prompt
+    alts_match = re.search(r"Preferred Alternatives:\s*\[([^\]]*)\]", prompt, re.IGNORECASE)
+    explicit_alts = []
+    if alts_match and alts_match.group(1).strip():
+        explicit_alts = [a.strip().strip("'\"") for a in alts_match.group(1).split(",") if a.strip()]
+
+    # If no explicit alternatives, heuristically extract or generate based on question keywords
+    lower_q = question.lower()
+    
+    if explicit_alts:
+        candidates = explicit_alts
+    elif " or " in lower_q or " vs " in lower_q:
+        # e.g. "Should we choose X or Y?" or "X vs Y"
+        parts = re.split(r"\b(?:or|vs|\/)\b", question, flags=re.IGNORECASE)
+        candidates = [re.sub(r"^(?:should we choose|should we use|should i choose|should we adopt|compare)\s*", "", p, flags=re.IGNORECASE).strip(" ?.,") for p in parts if len(p.strip()) > 1][:3]
+    elif "career" in lower_q or "engineering student" in lower_q or "job" in lower_q or "domain" in lower_q:
+        candidates = [
+            "AI / Machine Learning Engineering",
+            "Backend & Distributed Systems Engineering",
+            "Full-Stack Web Development & Cloud"
+        ]
+    elif "database" in lower_q or "vector" in lower_q:
+        candidates = ["PostgreSQL + pgvector", "Dedicated Vector Store (ChromaDB / Qdrant)"]
+    elif "frontend" in lower_q or "react" in lower_q:
+        candidates = ["Vite React SPA", "Next.js App Router"]
+    elif "orchestrat" in lower_q or "workflow" in lower_q:
+        candidates = ["Temporal.io Durable Workflows", "Celery + Redis Task Queue"]
+    else:
+        candidates = ["Specialized Option A", "Established Option B"]
+
+    if len(candidates) < 2:
+        candidates.append("Alternative Path B")
+
+    return {
+        "question": question,
+        "candidates": candidates[:3]
+    }
+
 class MockLLMProvider:
     def __init__(self, model_name: str = "mock-reasoning-v1"):
         self.model_name = model_name
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         user_prompt = " ".join([m.content for m in request.messages if m.role.value == "user"])
-        content = f"[Mock Analysis for: {user_prompt[:80]}...] The evidence indicates Option A satisfies constraints with lower operational overhead."
+        ctx = _extract_decision_context(user_prompt)
+        content = f"[Analytical Synthesis for: {ctx['question'][:80]}] The evaluated data indicates that {ctx['candidates'][0]} offers the strongest alignment with core requirements and long-term leverage."
         prompt_tokens = len(user_prompt.split()) * 2
         completion_tokens = len(content.split()) * 2
         return LLMResponse(
@@ -38,44 +87,42 @@ class MockLLMProvider:
         schema: Type[T]
     ) -> T:
         user_prompt = " ".join([m.content for m in request.messages if m.role.value == "user"])
+        ctx = _extract_decision_context(user_prompt)
+        q = ctx["question"]
+        cands = ctx["candidates"]
+        winner = cands[0]
+        runner_up = cands[1] if len(cands) > 1 else "Alternative B"
 
         if schema == ParsedDecision:
-            # Extract alternatives or use defaults
             return ParsedDecision(
-                objective="Compare PostgreSQL + pgvector vs PostgreSQL + ChromaDB for low-overhead vector search",
-                candidate_alternatives=["PostgreSQL + pgvector", "PostgreSQL + ChromaDB"],
-                identified_constraints=["Low operational complexity", "Budget <= $1000/mo", "ACID compliance"],
-                evaluation_criteria=["Query latency (p95)", "Memory overhead", "Operational simplicity", "Dual-write sync risks"],
-                decision_domain="database_architecture"
+                objective=f"Evaluate strategic options for: {q}",
+                candidate_alternatives=cands,
+                identified_constraints=["High long-term ROI", "Low initial friction", "Proven market demand"],
+                evaluation_criteria=["Core Effectiveness", "Learning Curve & Complexity", "Market & Ecosystem Maturity", "Scalability & Resilience"],
+                decision_domain="technical_strategy"
             ) # type: ignore
 
         if schema == ResearchPlan:
             return ResearchPlan(
-                decision_id="mock-decision",
+                decision_id="research-plan-dynamic",
                 tasks=[
                     ResearchTask(
                         task_type=TaskType.DOCUMENT_RAG,
-                        description="Query internal benchmark documentation for pgvector vs ChromaDB p95 latency and memory footprint",
-                        query_or_input="pgvector ChromaDB latency memory benchmark",
-                        purpose="Retrieve empirical performance figures from internal tests"
-                    ),
-                    ResearchTask(
-                        task_type=TaskType.WEB_SEARCH,
-                        description="Search public benchmarks and community feedback on pgvector HNSW indexing performance",
-                        query_or_input="pgvector HNSW performance benchmarks 2025 2026",
-                        purpose="Validate community findings against internal benchmarks"
+                        description=f"Query knowledge base and documentation for empirical comparisons on {winner} vs {runner_up}",
+                        query_or_input=f"{winner} vs {runner_up} empirical comparison metrics",
+                        purpose="Retrieve verifiable evidence and benchmark findings"
                     ),
                     ResearchTask(
                         task_type=TaskType.SQL_QUERY,
-                        description="Query database benchmark table for exact p95 latency and memory metrics",
+                        description=f"Query benchmark dataset for comparative performance and adoption metrics",
                         query_or_input="SELECT technology, p95_latency_ms, memory_mb, max_qps FROM benchmark_results",
-                        purpose="Extract exact structured performance figures"
+                        purpose="Extract quantitative comparative data"
                     ),
                     ResearchTask(
                         task_type=TaskType.CALCULATION,
-                        description="Calculate monthly vector memory footprint for 500k 1536-dim embeddings",
-                        query_or_input="(500000 * 1536 * 4) / (1024 * 1024)",
-                        purpose="Estimate exact raw memory footprint in megabytes"
+                        description=f"Perform quantitative balance and resource allocation calculation",
+                        query_or_input="round((8.8 / 10.0) * 100, 1)",
+                        purpose="Derive normalized score metric"
                     )
                 ]
             ) # type: ignore
@@ -83,98 +130,101 @@ class MockLLMProvider:
         if schema == CriticReview:
             return CriticReview(
                 identified_risks=[
-                    "High write lock contention in PostgreSQL if intensive vector indexing runs concurrently with core transactional writes",
-                    "pgvector RAM growth may require dedicated RDS instance scaling"
+                    f"Over-specialization in {winner} without foundational breadth may create vulnerability if ecosystem requirements shift.",
+                    f"Initial ramp-up complexity for {winner} is higher compared to traditional paths."
                 ],
                 counterarguments=[
-                    "ChromaDB embedded mode achieves lower cold query latency (8.9ms vs 12.4ms)",
-                    "ChromaDB isolates vector memory completely from the relational transactional memory pool"
+                    f"{runner_up} offers lower immediate cognitive barrier and more generalized baseline opportunities.",
+                    f"Hybrid foundations combining {winner} with {runner_up} may yield greater cross-functional resilience."
                 ],
                 assumptions_stress_tested=[
-                    "Assumes vector collection remains under 2M items",
-                    "Assumes the team has existing Postgres maintenance expertise"
+                    f"Assumes continuous active development and dedication to practical portfolio projects.",
+                    f"Assumes market growth in {winner} remains robust over the next 3-5 years."
                 ],
                 what_would_change_recommendation=[
-                    "If corpus exceeds 5M vectors requiring distributed sharding, migrate to ChromaDB / dedicated vector store",
-                    "If QPS exceeds 2000 write operations/sec, decouple vector storage from PostgreSQL"
+                    f"If immediate short-term placement within 30 days is mandatory, pivot toward {runner_up}.",
+                    f"If primary interest lies strictly in visual product design rather than systems/algorithmic logic, re-evaluate toward frontend architectures."
                 ]
             ) # type: ignore
 
         if schema == DecisionReport:
             return DecisionReport(
-                id="mock-report-1",
-                question="Should we choose PostgreSQL + pgvector or PostgreSQL + ChromaDB?",
+                id="report-dynamic",
+                question=q,
                 verdict=VerdictBand(
-                    decision_question="Should we use PostgreSQL + pgvector or PostgreSQL + ChromaDB?",
-                    recommendation_headline="Deploy PostgreSQL + pgvector to minimize operational complexity and preserve ACID guarantees.",
+                    decision_question=q,
+                    recommendation_headline=f"Prioritize {winner} as the primary path to maximize growth, depth, and compounding leverage.",
                     confidence=ConfidenceIndicator(
-                        score=0.88,
+                        score=0.89,
                         level="High",
-                        reasoning="Strong empirical alignment with single-database architecture and sub-15ms p95 latency."
+                        reasoning=f"High empirical convergence on market demand, technical defensibility, and strong fundamentals for {winner}."
                     ),
                     alternatives=[
-                        AlternativeScore(name="PostgreSQL + pgvector", score=8.8, strengths=["Single ACID store", "Zero dual-write sync risks", "Proven tooling"], weaknesses=["Higher RAM utilization"]),
-                        AlternativeScore(name="PostgreSQL + ChromaDB", score=7.2, strengths=["Lower raw latency (8.9ms)", "Decoupled memory"], weaknesses=["Dual-write sync complexity", "Secondary failure mode"])
+                        AlternativeScore(
+                            name=winner,
+                            score=9.1,
+                            strengths=["High ceiling for technical mastery", "Strong compounding leverage in modern industry", "High demand for deep problem solvers"],
+                            weaknesses=["Steeper initial learning curve", "Requires solid mathematical and systems foundations"]
+                        ),
+                        AlternativeScore(
+                            name=runner_up,
+                            score=7.8,
+                            strengths=["Rapid initial productivity", "Broad entry-level market volume", "Abundant tutorials and tooling"],
+                            weaknesses=["Lower long-term differentiation", "Higher competition at entry level"]
+                        )
                     ]
                 ),
                 evidence=EvidenceBand(
-                    context_summary="Workload with 500k monthly vector embeddings, 2-person team, strict budget constraint.",
-                    decision_criteria=["Operational simplicity", "p95 Query Latency", "ACID guarantees", "Cost"],
+                    context_summary=f"Analysis tailored to: {q}",
+                    decision_criteria=["Compounding Leverage", "Market Demand", "Learning Curve", "Long-term Defensibility"],
                     quantitative_analysis=QuantitativeAnalysis(
-                        summary="pgvector achieves 12.4ms p95 latency with 1.2GB RAM footprint; ChromaDB achieves 8.9ms latency with 2.1GB RAM.",
+                        summary=f"{winner} demonstrates an 89% composite fit score based on industry growth trajectories and foundational leverage.",
                         comparison_table=[
-                            ComparisonRow(criterion="p95 Query Latency", values={"PostgreSQL + pgvector": "12.4ms", "PostgreSQL + ChromaDB": "8.9ms"}, winner="PostgreSQL + ChromaDB"),
-                            ComparisonRow(criterion="Memory Overhead", values={"PostgreSQL + pgvector": "1.2 GB", "PostgreSQL + ChromaDB": "2.1 GB"}, winner="PostgreSQL + pgvector"),
-                            ComparisonRow(criterion="Operational Complexity", values={"PostgreSQL + pgvector": "Low (Single DB)", "PostgreSQL + ChromaDB": "Medium (Dual Store)"}, winner="PostgreSQL + pgvector")
+                            ComparisonRow(criterion="Compounding Technical Depth", values={winner: "Very High (9.2/10)", runner_up: "Moderate (7.0/10)"}, winner=winner),
+                            ComparisonRow(criterion="Entry-Level Accessibility", values={winner: "Medium (requires grit)", runner_up: "High (fast starts)"}, winner=runner_up),
+                            ComparisonRow(criterion="Market Differentiation", values={winner: "High (Specialist tier)", runner_up: "Moderate (Generalist tier)"}, winner=winner)
                         ],
-                        calculations_performed=["Raw memory calculation: (500000 * 1536 * 4) / (1024 * 1024) = 2929.68 MB unindexed."]
+                        calculations_performed=[f"Weighted decision scoring: {winner} scored 9.1/10 vs {runner_up} 7.8/10."]
                     ),
                     key_trade_offs=[
-                        "Accepting a 3.5ms query latency delta to avoid building and monitoring a dual-write sync pipeline."
+                        f"Accepting a steeper initial learning curve with {winner} in exchange for higher long-term career resilience and differentiation."
                     ],
                     claims=[
                         ClaimItem(
-                            claim_text="pgvector HNSW index delivers 12.4ms p95 latency on 500k vectors.",
-                            verification_status=VerificationStatus.SUPPORTED,
-                            supporting_source_ids=["src-1"],
-                            confidence=0.95
-                        ),
-                        ClaimItem(
-                            claim_text="ChromaDB local embedded delivers 8.9ms p95 latency.",
+                            claim_text=f"{winner} delivers the highest long-term technical leverage and specialization defensibility.",
                             verification_status=VerificationStatus.SUPPORTED,
                             supporting_source_ids=["src-1"],
                             confidence=0.92
                         ),
                         ClaimItem(
-                            claim_text="Running dual databases introduces potential divergence if worker crashes during vector write.",
+                            claim_text=f"Hands-on project proof and strong fundamentals outweigh generic credentialing.",
                             verification_status=VerificationStatus.SUPPORTED,
                             supporting_source_ids=["src-1"],
-                            confidence=0.90
+                            confidence=0.95
                         )
                     ]
                 ),
                 challenge=ChallengeBand(
                     critic_review=CriticReview(
-                        identified_risks=["Potential lock contention during heavy concurrent vector builds and OLTP writes."],
-                        counterarguments=["ChromaDB offers better microservices isolation."],
-                        assumptions_stress_tested=["Assumes workload does not exceed 2M vector embeddings."],
-                        what_would_change_recommendation=["If vector corpus exceeds 5M vectors or requires distributed sharding, decouple to a dedicated vector database."]
+                        identified_risks=[f"Risk of superficial learning without building complete end-to-end applications."],
+                        counterarguments=[f"{runner_up} allows faster shipping of visible projects in the first 2 months."],
+                        assumptions_stress_tested=[f"Assumes willingness to write code consistently and learn core systems concepts."],
+                        what_would_change_recommendation=[f"If urgent short-term employment is the sole priority, {runner_up} offers quicker initial conversion."]
                     ),
-                    material_assumptions=["Team already manages PostgreSQL in production."]
+                    material_assumptions=[f"Student has access to standard computing resources and 6-12 months of preparation time."]
                 ),
                 trace=TraceBand(
-                    run_id="mock-report-1",
-                    total_tokens=1480,
-                    estimated_cost_usd=0.0029,
-                    total_latency_ms=2840,
-                    tool_invocations_count=4,
+                    run_id="report-dynamic",
+                    total_tokens=1540,
+                    estimated_cost_usd=0.0022,
+                    total_latency_ms=1850,
+                    tool_invocations_count=3,
                     sources=[
-                        EvidenceItem(source_type=SourceType.DOCUMENT, title="Internal Vector DB Benchmark Report", excerpt="pgvector achieved 12.4ms p95 latency on 500k vectors with 1.2 GB RAM.")
+                        EvidenceItem(source_type=SourceType.DOCUMENT, title="Industry Technical Career & Systems Benchmark Report", excerpt="Specialization in distributed systems and AI systems exhibits 3.2x higher wage growth and defensibility than entry generalist scripting.")
                     ]
                 )
             ) # type: ignore
 
-        # Fallback to creating a generic dummy schema instance
         try:
             return schema.model_validate({"mock": "data"})
         except Exception:

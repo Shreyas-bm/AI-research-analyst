@@ -49,3 +49,4 @@ frontend/out/
 .idea/
 .vscode/
 .env.example
+run.bat

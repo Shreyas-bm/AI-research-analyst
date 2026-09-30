@@ -92,7 +92,7 @@ ${challenge.critic_review.what_would_change_recommendation.map(w => `  - ${w}`).
   };
 
   return (
-    <div className="min-h-screen bg-[#E9ECEC] text-[#1A1D22] p-6 lg:p-10 overflow-y-auto">
+    <div className="min-h-full bg-[#E9ECEC] text-[#1A1D22] p-6 lg:p-10 pb-20">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Main 14-Part Report Column (8 cols) */}
